@@ -8,7 +8,7 @@
 <meta name="theme-color" content="#0f172a">
 <title>Badge</title>
 <style>
-:root{--bg:#f4f5f7;--card:#fff;--tx:#0f172a;--mu:#64748b;--ac:#2563eb;--ok:#16a34a;--ko:#dc2626;--bd:#e2e8f0;
+:root{--bg:#f4f5f7;--card:#fff;--tx:#0f172a;--mu:#64748b;--ac:#2563eb;--ok:#16a34a;--ko:#dc2626;--co:#d97706;--bd:#e2e8f0;
 box-sizing:border-box;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
 @media(prefers-color-scheme:dark){:root{--bg:#0b1120;--card:#162033;--tx:#e5e9f0;--mu:#94a3b8;--bd:#263449}}
 *{box-sizing:border-box}
@@ -20,13 +20,16 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mu);
 .nav b{font-size:17px;text-align:center;flex:1}
 button,select,input{font:inherit;color:inherit}
 .ico{background:var(--bg);border:1px solid var(--bd);border-radius:10px;width:42px;height:42px;font-size:18px}
+.ico:disabled{opacity:.3}
 .big{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
 .big button{border:0;border-radius:14px;padding:22px 0;font-size:19px;font-weight:700;color:#fff}
 #bin{background:var(--ok)}#bout{background:var(--ko)}
+.big.co button{background:var(--co)}
 .big button:disabled{opacity:.3}
 .seg{display:flex;background:var(--bg);border-radius:10px;padding:3px;gap:3px}
 .seg button{flex:1;border:0;background:none;padding:9px 0;border-radius:8px}
 .seg button.on{background:var(--ac);color:#fff;font-weight:600}
+.seg.dis{opacity:.4;pointer-events:none}
 .row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bd)}
 .row:last-child{border:0}
 .mu{color:var(--mu);font-size:14px}
@@ -38,6 +41,16 @@ button,select,input{font:inherit;color:inherit}
 .add button,.btn{padding:9px 14px;border:0;border-radius:10px;background:var(--ac);color:#fff}
 .btn.g{background:var(--bg);color:var(--tx);border:1px solid var(--bd)}
 .live{font-size:13px;color:var(--ok)}
+.sw{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-radius:12px;background:var(--bg);border:1px solid var(--bd);margin-top:8px}
+.sw input{width:24px;height:24px;accent-color:var(--ac)}
+.sw.c input{accent-color:var(--co)}
+.note{padding:14px 0 4px;color:var(--mu);font-size:14px;text-align:center}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
+th{color:var(--mu);font-weight:600;text-align:right;padding:6px 3px;border-bottom:1px solid var(--bd);font-size:12px}
+td{text-align:right;padding:7px 3px;border-bottom:1px solid var(--bd);font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+tr:last-child td{border:0}
+.co-t{color:var(--co)}
 </style>
 </head>
 <body>
@@ -48,12 +61,17 @@ button,select,input{font:inherit;color:inherit}
       <b id="dlabel"></b>
       <button class="ico" id="dnext">›</button>
     </div>
-    <div class="big">
+    <div style="margin-top:12px">
+      <div class="sw"><span>🏠 Smart working</span><input type="checkbox" id="swt"></div>
+      <div class="sw"><span>🎉 Festività</span><input type="checkbox" id="hol"></div>
+      <div class="sw c"><span>📟 Call Out <span class="mu">(i badge registrano il Call Out)</span></span><input type="checkbox" id="cot"></div>
+    </div>
+    <div class="big" id="bigs">
       <button id="bin">Badge IN</button>
       <button id="bout">Badge OUT</button>
     </div>
     <div id="punches"></div>
-    <div class="add">
+    <div class="add" id="manual">
       <input type="time" id="mtime">
       <select id="mtype"><option value="in">IN</option><option value="out">OUT</option></select>
       <button id="madd">Aggiungi</button>
@@ -66,13 +84,17 @@ button,select,input{font:inherit;color:inherit}
       <button data-v="0">Nessuna</button><button data-v="30">30 min</button><button data-v="60">1 ora</button>
     </div>
     <div class="row" style="margin-top:10px"><span>Ore nette del giorno</span><b id="dnet">–</b></div>
+    <div class="row" id="dcorow" style="display:none"><span class="co-t">📟 di cui Call Out</span><b class="co-t" id="dco"></b></div>
     <div class="live" id="live"></div>
   </div>
 
   <div class="card">
     <h2>Bilancio</h2>
     <div class="seg" id="period">
-      <button data-v="day">Giorno</button><button data-v="week">Settimana</button><button data-v="month">Mese</button>
+      <button data-v="day">Giorno</button><button data-v="week">Settimana</button><button data-v="month">Mese</button><button data-v="year">Anno</button>
+    </div>
+    <div class="seg" id="filt" style="margin-top:8px">
+      <button data-v="all">Tutte le ore</button><button data-v="co">📟 Solo Call Out</button>
     </div>
     <div class="nav" style="margin-top:12px">
       <button class="ico" id="pprev">‹</button>
@@ -81,22 +103,23 @@ button,select,input{font:inherit;color:inherit}
     </div>
     <div class="tot" id="ptot"></div>
     <div class="mu" id="pdiff"></div>
-    <div id="plist" style="margin-top:8px"></div>
+    <div class="mu" id="pstat" style="margin-top:4px"></div>
+    <div id="ptable"></div>
   </div>
 
   <div class="card">
     <h2>Impostazioni e dati</h2>
     <div class="row"><span>Ore giornaliere previste</span><input type="number" id="target" min="0" max="24" step="0.25" style="width:80px;padding:8px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);text-align:right"></div>
     <div class="add">
-      <button class="btn g" id="exp">Esporta JSON</button>
-      <button class="btn g" id="imp">Importa JSON</button>
-      <input type="file" id="file" accept="application/json" hidden>
+      <button class="btn g" id="exp">Esporta CSV</button>
+      <button class="btn g" id="imp">Importa CSV</button>
+      <input type="file" id="file" accept=".csv,text/csv,text/plain" hidden>
     </div>
   </div>
 </main>
 
 <script>
-const KEY='badge.v1';
+const KEY='badge.v1', SW_MIN=480, SW_IN='08:00', SW_OUT='17:00';
 let S={days:{},target:8};
 try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r))}catch(e){}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
@@ -105,73 +128,136 @@ const pad=n=>String(n).padStart(2,'0');
 const key=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const parse=k=>{const[a,b,c]=k.split('-').map(Number);return new Date(a,b-1,c)};
 const hm=m=>{const s=m<0?'-':'';m=Math.abs(Math.round(m));return s+Math.floor(m/60)+'h '+pad(m%60)+'m'};
+const hh=m=>{const s=m<0?'-':(m>0?'+':'');m=Math.abs(Math.round(m));return s+Math.floor(m/60)+':'+pad(m%60)};
+const hn=m=>{m=Math.round(m);return Math.floor(m/60)+':'+pad(m%60)};
 const tm=iso=>{const d=new Date(iso);return pad(d.getHours())+':'+pad(d.getMinutes())};
-const day=k=>S.days[k]||(S.days[k]={punches:[],lunch:0});
+const day=k=>S.days[k]||(S.days[k]={punches:[],lunch:0,sw:false,hol:false});
 const isWork=d=>d.getDay()>0&&d.getDay()<6;
+const sorted=D=>[...D.punches].sort((a,b)=>a.t<b.t?-1:1);
 
-let cur=key(new Date()), period='day', pref=new Date();
+let cur=key(new Date()), period='day', filt='all', coMode=false, pref=new Date();
 
-function minutes(k){
-  const D=S.days[k]; if(!D||!D.punches.length)return{m:0,open:false};
-  const p=[...D.punches].sort((a,b)=>a.t<b.t?-1:1);
-  let tot=0,start=null,open=false;
-  for(const x of p){
+function pairs(list,live){
+  let tot=0,start=null;
+  for(const x of list){
     if(x.type==='in'){if(start===null)start=new Date(x.t)}
     else if(start!==null){tot+=(new Date(x.t)-start)/6e4;start=null}
   }
-  if(start!==null){open=true;if(k===key(new Date()))tot+=(new Date()-start)/6e4}
-  const lunch=Math.min(D.lunch||0,tot);
-  return{m:Math.max(0,tot-lunch),open};
+  const open=start!==null;
+  if(open&&live)tot+=(new Date()-start)/6e4;
+  return{tot,open};
+}
+function intervals(list){
+  const o=[];let s=null;
+  for(const x of list){
+    if(x.type==='in'){if(s===null)s=x.t}
+    else if(s!==null){o.push(tm(s)+'–'+tm(x.t));s=null}
+  }
+  if(s!==null)o.push(tm(s)+'–…');
+  return o;
+}
+function minutes(k){
+  const D=S.days[k]; if(!D)return{reg:0,co:0,m:0,open:false};
+  const live=k===key(new Date()), p=sorted(D);
+  const r=pairs(p.filter(x=>!x.co),live), c=pairs(p.filter(x=>x.co),live);
+  let reg,ro;
+  if(D.sw){reg=SW_MIN;ro=false}
+  else{reg=Math.max(0,r.tot-Math.min(D.lunch||0,r.tot));ro=r.open}
+  return{reg,co:c.tot,m:reg+c.tot,open:ro||c.open};
 }
 
 function renderDay(){
   const d=parse(cur), today=cur===key(new Date());
   $('dlabel').textContent=(today?'Oggi · ':'')+d.toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'});
-  const D=S.days[cur]||{punches:[],lunch:0};
-  const p=[...D.punches].sort((a,b)=>a.t<b.t?-1:1);
-  const last=p[p.length-1];
-  $('bin').disabled=!(today&&(!last||last.type==='out'));
-  $('bout').disabled=!(today&&last&&last.type==='in');
-  $('punches').innerHTML=p.length?p.map(x=>`<div class="row"><span>${x.type==='in'?'🟢 Entrata':'🔴 Uscita'}</span><span><b>${tm(x.t)}</b><button class="x" data-t="${x.t}">✕</button></span></div>`).join(''):'<div class="mu">Nessuna timbratura</div>';
-  document.querySelectorAll('#lunch button').forEach(b=>b.classList.toggle('on',+b.dataset.v===(D.lunch||0)));
+  const D=S.days[cur]||{punches:[],lunch:0,sw:false,hol:false};
+  const sw=!!D.sw, off=sw&&!coMode;
+  $('swt').checked=sw;$('hol').checked=!!D.hol;$('cot').checked=coMode;
+  $('bigs').classList.toggle('co',coMode);
+  $('bin').textContent=coMode?'Call Out IN':'Badge IN';
+  $('bout').textContent=coMode?'Call Out OUT':'Badge OUT';
+  const p=sorted(D), st=p.filter(x=>!!x.co===coMode), last=st[st.length-1];
+  $('bin').disabled=off||!(today&&(!last||last.type==='out'));
+  $('bout').disabled=off||!(today&&last&&last.type==='in');
+  $('manual').style.display=off?'none':'flex';
+  const shown=p.filter(x=>sw?x.co:true);
+  const rowsH=shown.map(x=>`<div class="row"><span class="${x.co?'co-t':''}">${x.co?'📟 ':''}${x.type==='in'?'🟢 Entrata':'🔴 Uscita'}</span><span><b>${tm(x.t)}</b><button class="x" data-t="${x.t}">✕</button></span></div>`).join('');
+  $('punches').innerHTML=(sw?`<div class="note">Smart working: giornata standard ${SW_IN}–${SW_OUT}, pausa 1 ora</div>`:'')+(rowsH||(sw?'':'<div class="mu">Nessuna timbratura</div>'));
+  $('lunch').classList.toggle('dis',sw);
+  const lv=sw?60:(D.lunch||0);
+  document.querySelectorAll('#lunch button').forEach(b=>b.classList.toggle('on',+b.dataset.v===lv));
   const r=minutes(cur);
-  $('dnet').textContent=hm(r.m);
+  $('dnet').textContent=(r.m||sw)?hm(r.m):'–';
+  $('dcorow').style.display=r.co>0?'flex':'none';
+  $('dco').textContent=hm(r.co);
   $('live').textContent=r.open&&today?'● In corso: il tempo sta scorrendo':(r.open?'⚠ Manca l’uscita':'');
-  const nxt=new Date(); $('dnext').disabled=cur>=key(nxt);
+  $('dnext').disabled=cur>=key(new Date());
 }
 
 function range(){
-  let a,b,label;
-  if(period==='day'){a=b=new Date(pref.getFullYear(),pref.getMonth(),pref.getDate());label=a.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}
-  else if(period==='week'){const w=(pref.getDay()+6)%7;a=new Date(pref.getFullYear(),pref.getMonth(),pref.getDate()-w);b=new Date(a.getFullYear(),a.getMonth(),a.getDate()+6);label=a.toLocaleDateString('it-IT',{day:'numeric',month:'short'})+' – '+b.toLocaleDateString('it-IT',{day:'numeric',month:'short'})}
-  else{a=new Date(pref.getFullYear(),pref.getMonth(),1);b=new Date(pref.getFullYear(),pref.getMonth()+1,0);label=a.toLocaleDateString('it-IT',{month:'long',year:'numeric'})}
+  let a,b,label;const y=pref.getFullYear(),mo=pref.getMonth(),dd=pref.getDate();
+  if(period==='day'){a=b=new Date(y,mo,dd);label=a.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}
+  else if(period==='week'){const w=(pref.getDay()+6)%7;a=new Date(y,mo,dd-w);b=new Date(y,mo,dd-w+6);label=a.toLocaleDateString('it-IT',{day:'numeric',month:'short'})+' – '+b.toLocaleDateString('it-IT',{day:'numeric',month:'short'})}
+  else if(period==='month'){a=new Date(y,mo,1);b=new Date(y,mo+1,0);label=a.toLocaleDateString('it-IT',{month:'long',year:'numeric'})}
+  else{a=new Date(y,0,1);b=new Date(y,11,31);label=String(y)}
   return{a,b,label};
 }
 
 function renderPeriod(){
   document.querySelectorAll('#period button').forEach(x=>x.classList.toggle('on',x.dataset.v===period));
+  document.querySelectorAll('#filt button').forEach(x=>x.classList.toggle('on',x.dataset.v===filt));
   const{a,b,label}=range(); $('plabel').textContent=label;
-  const todayK=key(new Date());
-  let tot=0,exp=0,rows='';
+  const todayK=key(new Date()), tgt=S.target*60, F=filt==='co';
+  let tot=0,exp=0,worked=0,swd=0,cot=0,cod=0,hol=0,rows='';
   for(let d=new Date(a);d<=b;d=new Date(d.getFullYear(),d.getMonth(),d.getDate()+1)){
-    const k=key(d), m=minutes(k).m, has=S.days[k]&&S.days[k].punches.length;
-    tot+=m;
-    if(isWork(d)&&k<=todayK)exp+=S.target*60;
-    if(has||period==='day')rows+=`<div class="row"><span>${d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'})}</span><b>${hm(m)}</b></div>`;
+    const k=key(d), D=S.days[k], r=minutes(k), wk=isWork(d);
+    tot+=r.m;cot+=r.co;if(r.co>0)cod++;
+    const isHol=!!(D&&D.hol), dexp=(wk&&!isHol)?tgt:0;
+    if(k<=todayK){exp+=dexp;if(wk&&isHol)hol++}
+    const has=!!(D&&(D.sw||D.punches.length));
+    if(has){worked++;if(D.sw)swd++}
+    if(period==='year')continue;
+    const dl=d.toLocaleDateString('it-IT',{weekday:'short',day:'numeric',month:'short'})+(D&&D.sw?' 🏠':'')+(isHol?' 🎉':'')+(r.co>0?' <span class="co-t">📟</span>':'');
+    if(F){
+      if(r.co>0){
+        const ivs=intervals(sorted(D).filter(x=>x.co)).join(' · ');
+        rows+=`<tr><td>${dl}</td><td>${ivs}</td><td>${hn(r.co)}</td></tr>`;
+      }
+    }else if(has){
+      let io='SW',pa='1h';
+      if(!D.sw){
+        const p=sorted(D).filter(x=>!x.co),fi=p.find(x=>x.type==='in'),lo=[...p].reverse().find(x=>x.type==='out');
+        io=fi||lo?(fi?tm(fi.t):'–')+'–'+(lo?tm(lo.t):'…'):'–';
+        pa=D.lunch?(D.lunch===60?'1h':D.lunch+'′'):'–';
+      }
+      const df=r.m-dexp;
+      rows+=`<tr><td>${dl}</td><td>${io}</td><td>${pa}</td><td>${hn(r.m)}</td><td class="${df>=0?'pos':'neg'}">${hh(df)}</td></tr>`;
+    }
+  }
+  if(F){
+    $('ptot').innerHTML=`<span class="co-t">${hm(cot)}</span>`;
+    $('pdiff').textContent='Ore di Call Out nel periodo';
+    $('pstat').textContent=`Giorni con Call Out: ${cod}`;
+    $('ptable').innerHTML=period==='year'?'':(rows?`<table><thead><tr><th>Giorno</th><th>Interventi</th><th>Ore</th></tr></thead><tbody>${rows}</tbody></table>`:'<div class="note">Nessun Call Out</div>');
+    return;
   }
   $('ptot').textContent=hm(tot);
   const diff=tot-exp;
   $('pdiff').innerHTML=`Previste: ${hm(exp)} · Saldo: <b class="${diff>=0?'pos':'neg'}">${diff>=0?'+':''}${hm(diff)}</b>`;
-  $('plist').innerHTML=rows||'<div class="mu">Nessun dato</div>';
+  $('pstat').innerHTML=`Giorni lavorati: ${worked}`+(swd?` (smart working: ${swd})`:'')+(hol?` · 🎉 Festività: ${hol}`:'')+(cot?` · <span class="co-t">📟 Call Out: ${hm(cot)}</span>`:'');
+  $('ptable').innerHTML=period==='year'?'':(rows?`<table><thead><tr><th>Giorno</th><th>In–Out</th><th>Pausa</th><th>Ore</th><th>Saldo</th></tr></thead><tbody>${rows}</tbody></table>`:'<div class="note">Nessun dato</div>');
 }
 
 function render(){renderDay();renderPeriod();$('target').value=S.target}
 
 function punch(type,date=new Date()){
-  day(cur).punches.push({t:date.toISOString(),type});save();render();
+  const x={t:date.toISOString(),type};if(coMode)x.co=true;
+  day(cur).punches.push(x);save();render();
 }
 $('bin').onclick=()=>punch('in');
 $('bout').onclick=()=>punch('out');
+$('swt').onchange=e=>{day(cur).sw=e.target.checked;save();render()};
+$('hol').onchange=e=>{day(cur).hol=e.target.checked;save();render()};
+$('cot').onchange=e=>{coMode=e.target.checked;render()};
 $('madd').onclick=()=>{
   const v=$('mtime').value; if(!v)return;
   const[h,m]=v.split(':').map(Number),d=parse(cur);d.setHours(h,m,0,0);
@@ -188,24 +274,67 @@ const shiftDay=n=>{const d=parse(cur);d.setDate(d.getDate()+n);cur=key(d);pref=p
 $('dprev').onclick=()=>shiftDay(-1);
 $('dnext').onclick=()=>shiftDay(1);
 $('period').onclick=e=>{if(!e.target.dataset.v)return;period=e.target.dataset.v;renderPeriod()};
+$('filt').onclick=e=>{if(!e.target.dataset.v)return;filt=e.target.dataset.v;renderPeriod()};
 const shiftP=n=>{
   if(period==='day')pref.setDate(pref.getDate()+n);
   else if(period==='week')pref.setDate(pref.getDate()+7*n);
-  else pref=new Date(pref.getFullYear(),pref.getMonth()+n,1);
+  else if(period==='month')pref=new Date(pref.getFullYear(),pref.getMonth()+n,1);
+  else pref=new Date(pref.getFullYear()+n,0,1);
   renderPeriod();
 };
 $('pprev').onclick=()=>shiftP(-1);
 $('pnext').onclick=()=>shiftP(1);
 $('target').onchange=e=>{S.target=Math.max(0,+e.target.value||0);save();renderPeriod()};
 
-$('exp').onclick=()=>{
-  const blob=new Blob([JSON.stringify(S,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='badge-'+key(new Date())+'.json';a.click();
+/* CSV: data;tipo;valore  (tipo = TARGET, SMART, FESTIVO, PAUSA, IN, OUT, COIN, COOUT) */
+function toCSV(){
+  const L=['data;tipo;valore','0000-00-00;TARGET;'+S.target];
+  Object.keys(S.days).sort().forEach(k=>{
+    const D=S.days[k];
+    if(D.sw)L.push(k+';SMART;1');
+    if(D.hol)L.push(k+';FESTIVO;1');
+    if(D.lunch)L.push(k+';PAUSA;'+D.lunch);
+    sorted(D).forEach(x=>{const d=new Date(x.t);L.push(k+';'+(x.co?'CO':'')+x.type.toUpperCase()+';'+pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds()))});
+  });
+  return L.join('\n')+'\n';
+}
+$('exp').onclick=async()=>{
+  const name='badge-'+key(new Date())+'.csv';
+  const file=new File([toCSV()],name,{type:'text/csv'});
+  try{
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return}
+  }catch(e){if(e&&e.name==='AbortError')return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=name;a.click();
 };
 $('imp').onclick=()=>$('file').click();
 $('file').onchange=e=>{
-  const f=e.target.files[0]; if(!f)return;
-  f.text().then(t=>{try{const o=JSON.parse(t);if(o&&o.days){S=Object.assign({days:{},target:8},o);save();render()}else alert('File non valido')}catch(_){alert('File non valido')}});
+  const f=e.target.files[0]; e.target.value=''; if(!f)return;
+  f.text().then(t=>{
+    const lines=t.replace(/^\uFEFF/,'').split(/\r?\n/).filter(l=>l.trim());
+    if(!lines.length)return alert('File vuoto');
+    const sep=lines[0].includes(';')?';':',';
+    const N={days:{},target:S.target};let ok=0;
+    const yes=v=>v==='1'||/^(true|si|sì)$/i.test(v);
+    for(const l of lines){
+      const[c,tp,v]=l.split(sep).map(s=>s.trim());
+      if(!c||!tp||c.toLowerCase()==='data')continue;
+      const T=tp.toUpperCase();
+      if(T==='TARGET'){const n=parseFloat(String(v).replace(',','.'));if(!isNaN(n)){N.target=n;ok++}continue}
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(c))continue;
+      const D=N.days[c]||(N.days[c]={punches:[],lunch:0,sw:false,hol:false});
+      if(T==='SMART'){D.sw=yes(v);ok++}
+      else if(T==='FESTIVO'){D.hol=yes(v);ok++}
+      else if(T==='PAUSA'){D.lunch=parseInt(v)||0;ok++}
+      else if(['IN','OUT','COIN','COOUT'].includes(T)&&/^\d{1,2}:\d{2}(:\d{2})?$/.test(v)){
+        const[h,mi,s]=v.split(':').map(Number),d=parse(c);d.setHours(h,mi,s||0,0);
+        const x={t:d.toISOString(),type:T.endsWith('IN')?'in':'out'};if(T[0]==='C')x.co=true;
+        D.punches.push(x);ok++;
+      }
+    }
+    if(!ok)return alert('CSV non riconosciuto');
+    if(!confirm('Importate '+ok+' righe. Sostituire i dati attuali con il backup?'))return;
+    S=N;save();render();
+  });
 };
 setInterval(()=>{if(cur===key(new Date()))render()},30000);
 render();
