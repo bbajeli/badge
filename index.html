@@ -51,6 +51,16 @@ td{text-align:right;padding:7px 3px;border-bottom:1px solid var(--bd);font-varia
 th:first-child,td:first-child{text-align:left}
 tr:last-child td{border:0}
 .co-t{color:var(--co)}
+.pick{cursor:pointer;padding:9px 6px;border-radius:10px;background:var(--bg);border:1px dashed var(--bd)}
+.pick::after{content:' ▾';color:var(--mu)}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:flex-end;justify-content:center;z-index:50}
+.ov.on{display:flex}
+.sheet{background:var(--card);width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));border:1px solid var(--bd)}
+.sheet input,.sheet select{width:100%;padding:12px;border:1px solid var(--bd);border-radius:10px;background:var(--bg);margin-bottom:8px}
+.sheet .two{display:flex;gap:8px}
+.sheet .btns{display:flex;gap:8px;margin-top:6px}
+.sheet .btns button{flex:1;padding:12px;border-radius:10px;border:1px solid var(--bd);background:var(--bg)}
+.sheet .btns .go{background:var(--ac);color:#fff;border:0;font-weight:600}
 </style>
 </head>
 <body>
@@ -58,7 +68,7 @@ tr:last-child td{border:0}
   <div class="card">
     <div class="nav">
       <button class="ico" id="dprev">‹</button>
-      <b id="dlabel"></b>
+      <b id="dlabel" class="pick" role="button" tabindex="0"></b>
       <button class="ico" id="dnext">›</button>
     </div>
     <div style="margin-top:12px">
@@ -98,7 +108,7 @@ tr:last-child td{border:0}
     </div>
     <div class="nav" style="margin-top:12px">
       <button class="ico" id="pprev">‹</button>
-      <b id="plabel"></b>
+      <b id="plabel" class="pick" role="button" tabindex="0"></b>
       <button class="ico" id="pnext">›</button>
     </div>
     <div class="tot" id="ptot"></div>
@@ -117,6 +127,7 @@ tr:last-child td{border:0}
     </div>
   </div>
 </main>
+<div class="ov" id="ov"><div class="sheet" id="sheet"></div></div>
 
 <script>
 const KEY='badge.v1', SW_MIN=480, SW_IN='08:00', SW_OUT='17:00';
@@ -336,6 +347,43 @@ $('file').onchange=e=>{
     S=N;save();render();
   });
 };
+/* Selettore rapido del periodo */
+function closePick(){$('ov').classList.remove('on')}
+function openPick(){
+  const y=pref.getFullYear(), mo=pref.getMonth(), ny=new Date().getFullYear();
+  const T={day:'Scegli il giorno',week:'Scegli una settimana',month:'Scegli il mese',year:'Scegli l’anno'};
+  let body='';
+  if(period==='day'||period==='week'){
+    body=`<input type="date" id="pk-d" value="${key(pref)}">`+(period==='week'?'<div class="mu" style="margin-bottom:8px">Scegli un giorno qualsiasi: si apre la sua settimana (lun–dom)</div>':'');
+  }else{
+    let ys='';for(let i=Math.min(ny-8,y);i<=Math.max(ny+1,y);i++)ys+=`<option value="${i}"${i===y?' selected':''}>${i}</option>`;
+    const ms=Array.from({length:12},(_,i)=>`<option value="${i}"${i===mo?' selected':''}>${new Date(2000,i,1).toLocaleDateString('it-IT',{month:'long'})}</option>`).join('');
+    body=period==='month'?`<div class="two"><select id="pk-m">${ms}</select><select id="pk-y">${ys}</select></div>`:`<select id="pk-y">${ys}</select>`;
+  }
+  $('sheet').innerHTML=`<h2>${T[period]}</h2>${body}<div class="btns"><button id="pk-today">Oggi</button><button id="pk-cancel">Annulla</button><button class="go" id="pk-go">Vai</button></div>`;
+  $('ov').classList.add('on');
+  $('pk-cancel').onclick=closePick;
+  $('pk-today').onclick=()=>{pref=new Date();closePick();renderPeriod()};
+  $('pk-go').onclick=()=>{
+    if(period==='day'||period==='week'){const v=$('pk-d').value;if(v)pref=parse(v)}
+    else if(period==='month')pref=new Date(+$('pk-y').value,+$('pk-m').value,1);
+    else pref=new Date(+$('pk-y').value,0,1);
+    closePick();renderPeriod();
+  };
+}
+$('plabel').onclick=openPick;
+function openDayPick(){
+  const t=key(new Date());
+  $('sheet').innerHTML=`<h2>Scegli il giorno</h2><input type="date" id="pk-d" value="${cur}" max="${t}"><div class="btns"><button id="pk-today">Oggi</button><button id="pk-cancel">Annulla</button><button class="go" id="pk-go">Vai</button></div>`;
+  $('ov').classList.add('on');
+  const go=v=>{if(v&&v<=t){cur=v;pref=parse(cur);render()}closePick()};
+  $('pk-cancel').onclick=closePick;
+  $('pk-today').onclick=()=>go(t);
+  $('pk-go').onclick=()=>go($('pk-d').value);
+}
+$('dlabel').onclick=openDayPick;
+$('ov').onclick=e=>{if(e.target.id==='ov')closePick()};
+
 setInterval(()=>{if(cur===key(new Date()))render()},30000);
 render();
 </script>
